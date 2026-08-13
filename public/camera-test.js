@@ -4,6 +4,7 @@ const statusEl = document.getElementById('status');
 const toggleMicButton = document.getElementById('toggleMicButton');
 const toggleCameraButton = document.getElementById('toggleCameraButton');
 const hangUpButton = document.getElementById('hangUpButton');
+const rejoinButton = document.getElementById('rejoinButton');
 
 let localStream;
 
@@ -33,6 +34,8 @@ async function startCamera() {
 
     localVideo.srcObject = stream;
     statusEl.textContent = 'Status: camera and mic active';
+
+    rejoinButton.hidden = true;
 
     createPeerConnection(stream);
     connectToSignalingServer();
@@ -85,9 +88,13 @@ function createPeerConnection(localStream) {
     } else if (iceState === 'connected' || iceState === 'completed') {
       statusEl.textContent = 'Status: connected';
     } else if (iceState === 'disconnected') {
-      statusEl.textContent = 'Status: connection temporarily lost';
-    } else if (iceState === 'failed') {
-      statusEl.textContent = 'Status: connection failed — try rejoining';
+  showRejoinOption(
+    'Status: connection temporarily lost — try rejoining'
+  );
+} else if (iceState === 'failed') {
+  showRejoinOption(
+    'Status: connection failed — try rejoining'
+  );
     } else if (iceState === 'closed') {
       statusEl.textContent = 'Status: connection closed';
     }
@@ -103,9 +110,13 @@ function createPeerConnection(localStream) {
     } else if (connectionState === 'connected') {
       statusEl.textContent = 'Status: connected';
     } else if (connectionState === 'disconnected') {
-      statusEl.textContent = 'Status: disconnected — check your network';
-    } else if (connectionState === 'failed') {
-      statusEl.textContent = 'Status: connection failed — try rejoining';
+  showRejoinOption(
+    'Status: disconnected — check your network, then rejoin'
+  );
+} else if (connectionState === 'failed') {
+  showRejoinOption(
+    'Status: connection failed — try rejoining'
+  );
     } else if (connectionState === 'closed') {
       statusEl.textContent = 'Status: call ended';
     }
@@ -157,32 +168,34 @@ function connectToSignalingServer() {
   };
 
   socket.onmessage = async (event) => {
-    const data = JSON.parse(event.data);
-    console.log('Signal received:', data.type);
+  const data = JSON.parse(event.data);
+  console.log('Signal received:', data.type);
 
-    if (data.type === 'joined') {
-      myRole = data.role;
-      statusEl.textContent = `Status: joined room "${data.roomId}" as ${myRole} (${data.peerCount}/2 peers)`;
-    } else if (data.type === 'ready') {
-      statusEl.textContent = 'Status: both peers present, connecting...';
-      if (myRole === 'caller') {
-        await startCall();
-      }
-    } else if (data.type === 'signal') {
-      await handleSignal(data.payload);
-    } else if (data.type === 'peer-left') {
-  statusEl.textContent = 'Status: the other participant left';
-
-  remoteVideo.srcObject = null;
-
-  if (peerConnection) {
-    peerConnection.close();
-    peerConnection = null;
-  }
-} else if (data.type === 'room-full') {
-      statusEl.textContent = 'Status: room is full, cannot join';
+  if (data.type === 'joined') {
+    myRole = data.role;
+    statusEl.textContent = `Status: joined room "${data.roomId}" as ${myRole} (${data.peerCount}/2 peers)`;
+  } else if (data.type === 'ready') {
+    statusEl.textContent = 'Status: both peers present, connecting...';
+    if (myRole === 'caller') {
+      await startCall();
     }
-  };
+  } else if (data.type === 'signal') {
+    await handleSignal(data.payload);
+  } else if (data.type === 'peer-left') {
+    remoteVideo.srcObject = null;
+
+    if (peerConnection) {
+      peerConnection.close();
+      peerConnection = null;
+    }
+
+    showRejoinOption(
+      'Status: the other participant left — you can rejoin'
+    );
+  } else if (data.type === 'room-full') {
+    statusEl.textContent = 'Status: room is full, cannot join';
+  }
+};
 
   socket.onerror = () => {
     statusEl.textContent = 'Status: could not reach signaling server';
@@ -216,6 +229,11 @@ function hangUp() {
 }
 hangUpButton.addEventListener('click', hangUp);
 
+function showRejoinOption(message) {
+  statusEl.textContent = message;
+  rejoinButton.hidden = false;
+}
+
 startCamera();
 
 toggleMicButton.addEventListener('click', () => {
@@ -242,3 +260,6 @@ toggleCameraButton.addEventListener('click', () => {
   }
 });
 
+rejoinButton.addEventListener('click', () => {
+  window.location.reload();
+});
