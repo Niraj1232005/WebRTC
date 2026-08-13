@@ -3,6 +3,7 @@ const statusEl = document.getElementById('status');
 
 const toggleMicButton = document.getElementById('toggleMicButton');
 const toggleCameraButton = document.getElementById('toggleCameraButton');
+const hangUpButton = document.getElementById('hangUpButton');
 
 let localStream;
 
@@ -38,6 +39,7 @@ async function startCamera() {
 
     toggleMicButton.disabled = false;
     toggleCameraButton.disabled = false;
+    hangUpButton.disabled = false;
   } catch (err) {
     if (err.name === 'NotAllowedError') {
       statusEl.textContent = 'Status: permission denied — please allow camera/mic access';
@@ -141,8 +143,15 @@ function connectToSignalingServer() {
     } else if (data.type === 'signal') {
       await handleSignal(data.payload);
     } else if (data.type === 'peer-left') {
-      statusEl.textContent = 'Status: the other participant left';
-    } else if (data.type === 'room-full') {
+  statusEl.textContent = 'Status: the other participant left';
+
+  remoteVideo.srcObject = null;
+
+  if (peerConnection) {
+    peerConnection.close();
+    peerConnection = null;
+  }
+} else if (data.type === 'room-full') {
       statusEl.textContent = 'Status: room is full, cannot join';
     }
   };
@@ -151,6 +160,33 @@ function connectToSignalingServer() {
     statusEl.textContent = 'Status: could not reach signaling server';
   };
 }
+
+function hangUp() {
+  statusEl.textContent = 'Status: call ended';
+
+  if (peerConnection) {
+    peerConnection.close();
+    peerConnection = null;
+  }
+
+  if (localStream) {
+    localStream.getTracks().forEach((track) => {
+      track.stop();
+    });
+  }
+
+  localVideo.srcObject = null;
+  remoteVideo.srcObject = null;
+
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    socket.close();
+  }
+
+  toggleMicButton.disabled = true;
+  toggleCameraButton.disabled = true;
+  hangUpButton.disabled = true;
+}
+hangUpButton.addEventListener('click', hangUp);
 
 startCamera();
 
@@ -177,3 +213,4 @@ toggleCameraButton.addEventListener('click', () => {
     toggleCameraButton.textContent = 'Turn camera on';
   }
 });
+
