@@ -6,6 +6,13 @@ const toggleCameraButton = document.getElementById('toggleCameraButton');
 const hangUpButton = document.getElementById('hangUpButton');
 const rejoinButton = document.getElementById('rejoinButton');
 
+const qualityConnection = document.getElementById('qualityConnection');
+const qualityPacketsLost = document.getElementById('qualityPacketsLost');
+const qualityJitter = document.getElementById('qualityJitter');
+const qualityRoundTripTime = document.getElementById('qualityRoundTripTime');
+const qualityResolution = document.getElementById('qualityResolution');
+const qualityFps = document.getElementById('qualityFps');
+
 let localStream;
 
 const remoteVideo = document.createElement('video');
@@ -107,6 +114,7 @@ function createPeerConnection(localStream) {
 
     if (connectionState === 'connecting') {
       statusEl.textContent = 'Status: connecting...';
+      updateQualityStats();
     } else if (connectionState === 'connected') {
       statusEl.textContent = 'Status: connected';
     } else if (connectionState === 'disconnected') {
@@ -234,7 +242,70 @@ function showRejoinOption(message) {
   rejoinButton.hidden = false;
 }
 
+async function updateQualityStats() {
+  if (!peerConnection) return;
+
+  const stats = await peerConnection.getStats();
+  let packetsLost = null;
+  let jitter = null;
+  let roundTripTime = null;
+  let resolution = null;
+  let fps = null;
+
+  stats.forEach((report) => {
+    if (report.type === 'candidate-pair' && report.state === 'succeeded' && report.nominated) {
+      if (report.currentRoundTripTime !== undefined) {
+        roundTripTime = report.currentRoundTripTime;
+      }
+    }
+
+    if (report.type === 'inbound-rtp' && report.kind === 'video') {
+      if (report.packetsLost !== undefined) {
+        packetsLost = report.packetsLost;
+      }
+      if (report.jitter !== undefined) {
+        jitter = report.jitter;
+      }
+      if (report.framesPerSecond !== undefined) {
+        fps = report.framesPerSecond;
+      }
+      if (report.frameWidth && report.frameHeight) {
+        resolution = `${report.frameWidth}x${report.frameHeight}`;
+      }
+    }
+
+    if (report.type === 'track' && report.kind === 'video') {
+      if (!resolution && report.frameWidth && report.frameHeight) {
+        resolution = `${report.frameWidth}x${report.frameHeight}`;
+      }
+      if (report.framesPerSecond !== undefined && fps === null) {
+        fps = report.framesPerSecond;
+      }
+    }
+
+    if (report.type === 'outbound-rtp' && report.kind === 'video') {
+      if (!resolution && report.frameWidth && report.frameHeight) {
+        resolution = `${report.frameWidth}x${report.frameHeight}`;
+      }
+      if (report.framesPerSecond !== undefined && fps === null) {
+        fps = report.framesPerSecond;
+      }
+    }
+  });
+
+  qualityConnection.textContent = peerConnection.connectionState || 'unknown';
+  qualityPacketsLost.textContent = packetsLost !== null ? String(packetsLost) : '-';
+  qualityJitter.textContent = jitter !== null ? jitter.toFixed(3) : '-';
+  qualityRoundTripTime.textContent = roundTripTime !== null ? `${(roundTripTime * 1000).toFixed(0)} ms` : '-';
+  qualityResolution.textContent = resolution || '-';
+  qualityFps.textContent = fps !== null ? String(Number(fps).toFixed(1)) : '-';
+}
+
 startCamera();
+
+setInterval(() => {
+  updateQualityStats();
+}, 1000);
 
 toggleMicButton.addEventListener('click', () => {
   const audioTrack = localStream.getAudioTracks()[0];

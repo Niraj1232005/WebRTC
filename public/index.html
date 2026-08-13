@@ -16,6 +16,19 @@
 <button id="hangUpButton" disabled>
   Hang up
 </button>
+<button id="rejoinButton" hidden>
+  Rejoin room
+</button>
+<h3>Connection quality</h3>
+
+<div id="qualityPanel">
+  <p>Connection: <span id="qualityConnection">Waiting...</span></p>
+  <p>Packets lost: <span id="qualityPacketsLost">-</span></p>
+  <p>Jitter: <span id="qualityJitter">-</span></p>
+  <p>Round-trip time: <span id="qualityRoundTripTime">-</span></p>
+  <p>Resolution: <span id="qualityResolution">-</span></p>
+  <p>Frames per second: <span id="qualityFps">-</span></p>
+</div>
 
   <script src="camera-test.js"></script>
 </body>
