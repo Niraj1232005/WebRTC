@@ -1,6 +1,10 @@
 const localVideo = document.getElementById('localVideo');
 const statusEl = document.getElementById('status');
 
+const toggleMicButton = document.getElementById('toggleMicButton');
+
+let localStream;
+
 const remoteVideo = document.createElement('video');
 remoteVideo.autoplay = true;
 remoteVideo.playsinline = true;
@@ -23,12 +27,15 @@ async function startCamera() {
       video: true,
       audio: true
     });
+    localStream = stream;
 
     localVideo.srcObject = stream;
     statusEl.textContent = 'Status: camera and mic active';
 
     createPeerConnection(stream);
     connectToSignalingServer();
+
+    toggleMicButton.disabled = false;
   } catch (err) {
     if (err.name === 'NotAllowedError') {
       statusEl.textContent = 'Status: permission denied — please allow camera/mic access';
@@ -144,3 +151,15 @@ function connectToSignalingServer() {
 }
 
 startCamera();
+
+toggleMicButton.addEventListener('click', () => {
+  const audioTrack = localStream.getAudioTracks()[0];
+
+  audioTrack.enabled = !audioTrack.enabled;
+
+  if (audioTrack.enabled) {
+    toggleMicButton.textContent = 'Mute microphone';
+  } else {
+    toggleMicButton.textContent = 'Unmute microphone';
+  }
+});
