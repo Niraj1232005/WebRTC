@@ -76,11 +76,39 @@ function createPeerConnection(localStream) {
   };
 
   peerConnection.oniceconnectionstatechange = () => {
-    console.log('ICE connection state:', peerConnection.iceConnectionState);
+    const iceState = peerConnection.iceConnectionState;
+
+    console.log('ICE connection state:', iceState);
+
+    if (iceState === 'checking') {
+      statusEl.textContent = 'Status: checking network connection...';
+    } else if (iceState === 'connected' || iceState === 'completed') {
+      statusEl.textContent = 'Status: connected';
+    } else if (iceState === 'disconnected') {
+      statusEl.textContent = 'Status: connection temporarily lost';
+    } else if (iceState === 'failed') {
+      statusEl.textContent = 'Status: connection failed — try rejoining';
+    } else if (iceState === 'closed') {
+      statusEl.textContent = 'Status: connection closed';
+    }
   };
 
   peerConnection.onconnectionstatechange = () => {
-    console.log('Connection state:', peerConnection.connectionState);
+    const connectionState = peerConnection.connectionState;
+
+    console.log('Connection state:', connectionState);
+
+    if (connectionState === 'connecting') {
+      statusEl.textContent = 'Status: connecting...';
+    } else if (connectionState === 'connected') {
+      statusEl.textContent = 'Status: connected';
+    } else if (connectionState === 'disconnected') {
+      statusEl.textContent = 'Status: disconnected — check your network';
+    } else if (connectionState === 'failed') {
+      statusEl.textContent = 'Status: connection failed — try rejoining';
+    } else if (connectionState === 'closed') {
+      statusEl.textContent = 'Status: call ended';
+    }
   };
 }
 
