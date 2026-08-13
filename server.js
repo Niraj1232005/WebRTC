@@ -16,6 +16,11 @@ wss.on('connection', (socket) => {
       return;
     }
 
+    if (data.type === 'signal') {
+      relaySignal(socket, data);
+      return;
+    }
+
     console.log('Received:', data.type);
   });
 
@@ -39,14 +44,28 @@ function handleJoin(socket, roomId) {
   peers.push(socket);
   socket.roomId = roomId;
 
-  console.log(`Client joined room "${roomId}", now ${peers.length} peer(s)`);
+  const role = peers.length === 1 ? 'caller' : 'callee';
 
-  socket.send(JSON.stringify({ type: 'joined', roomId, peerCount: peers.length }));
+  console.log(`Client joined room "${roomId}" as ${role}, now ${peers.length} peer(s)`);
+
+  socket.send(JSON.stringify({ type: 'joined', roomId, peerCount: peers.length, role }));
 
   if (peers.length === 2) {
     peers.forEach((peerSocket) => {
       peerSocket.send(JSON.stringify({ type: 'ready' }));
     });
+  }
+}
+
+function relaySignal(senderSocket, data) {
+  const roomId = senderSocket.roomId;
+  if (!roomId || !rooms.has(roomId)) return;
+
+  const peers = rooms.get(roomId);
+  const otherPeer = peers.find((s) => s !== senderSocket);
+
+  if (otherPeer) {
+    otherPeer.send(JSON.stringify({ type: 'signal', payload: data.payload }));
   }
 }
 
